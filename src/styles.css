@@ -26,6 +26,46 @@ textarea {
   height: 100vh;
 }
 
+.renderer-fallback {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background:
+    radial-gradient(circle at 25% 18%, rgba(255, 209, 102, 0.16), transparent 28%),
+    radial-gradient(circle at 78% 24%, rgba(111, 201, 255, 0.14), transparent 26%),
+    #07130d;
+}
+
+.renderer-fallback-card {
+  width: min(560px, 100%);
+  padding: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  background: rgba(7, 19, 13, 0.9);
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.35);
+}
+
+.renderer-fallback-card h2 {
+  margin: 0 0 12px;
+  font-size: clamp(28px, 5vw, 46px);
+  line-height: 1;
+}
+
+.renderer-fallback-card p {
+  color: rgba(248, 255, 249, 0.76);
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.5;
+}
+
+.renderer-fallback-card .fallback-link {
+  margin-top: 12px;
+  color: #ffd166;
+}
+
 .hud {
   position: absolute;
   inset: 18px 18px auto 18px;

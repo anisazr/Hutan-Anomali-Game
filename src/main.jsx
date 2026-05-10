@@ -80,6 +80,37 @@ const tmpLookAt = new THREE.Vector3();
 const CAMERA_MODES = ["third", "shiftLock", "first"];
 const MOBILE_INPUT = { x: 0, z: 0, shift: false, space: false, tiltEnabled: false };
 
+function canUseWebGL() {
+  try {
+    const canvas = document.createElement("canvas");
+    return Boolean(canvas.getContext("webgl2") || canvas.getContext("webgl"));
+  } catch {
+    return false;
+  }
+}
+
+class CanvasErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { crashed: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { crashed: true };
+  }
+
+  componentDidCatch(error) {
+    console.error("3D renderer failed:", error);
+  }
+
+  render() {
+    if (this.state.crashed) {
+      return <RendererFallback />;
+    }
+    return this.props.children;
+  }
+}
+
 function App() {
   const [isNight, setIsNight] = useState(true);
   const [solvedAnomalies, setSolvedAnomalies] = useState([]);
@@ -115,6 +146,7 @@ function App() {
   const [soundPlaying, setSoundPlaying] = useState(false);
   const [cameraMode, setCameraMode] = useState("third");
   const [cameraZoom, setCameraZoom] = useState(0.62);
+  const [webglSupported, setWebglSupported] = useState(true);
   const playerApi = useRef(null);
   const audio = useAudioManager();
 
@@ -125,6 +157,7 @@ function App() {
 
   useEffect(() => {
     const timer = window.setTimeout(() => setLoading(false), 1600);
+    setWebglSupported(canUseWebGL());
     return () => window.clearTimeout(timer);
   }, []);
 
@@ -289,32 +322,38 @@ function App() {
 
   return (
     <main className="app">
-      <Canvas dpr={[1, 1.5]} shadows camera={{ position: [0, 6, 10], fov: 48 }} gl={{ powerPreference: "high-performance", antialias: false }}>
-        <color attach="background" args={[isNight ? "#030615" : "#9bd5ff"]} />
-        <fog attach="fog" args={[isNight ? "#050817" : "#b8dfb5", 15, 48]} />
-        <Suspense fallback={null}>
-          <SceneLights isNight={isNight} />
-          <Environment preset={isNight ? "night" : "sunset"} resolution={64} />
-          {isNight && <GalaxySky />}
-          <Physics gravity={[0, -9.81, 0]}>
-            <Forest />
-            <Ground />
-            <Player refApi={playerApi} isNight={isNight} cameraMode={effectiveCameraMode} avatar={selectedAvatar} mouseSensitivity={mouseSensitivity} />
-            <PlayerPositionReporter playerApi={playerApi} onUpdate={setPlayerPosition} />
-            <AnomalyField
-              solvedAnomalies={solvedAnomalies}
-              activeAnomalyId={nextAnomaly?.id}
-              onSelect={(anomaly) => {
-                if (finale) return;
-                setActiveClue(null);
-                setActiveAnomaly(anomaly);
-              }}
-            />
-          </Physics>
-          <FollowCamera playerApi={playerApi} finale={finale} cameraMode={effectiveCameraMode} cameraZoom={cameraZoom} mouseSensitivity={mouseSensitivity} />
-          <OrbitControls enabled={false} />
-        </Suspense>
-      </Canvas>
+      {webglSupported ? (
+        <CanvasErrorBoundary>
+          <Canvas dpr={[1, 1.25]} shadows camera={{ position: [0, 6, 10], fov: 48 }} gl={{ powerPreference: "default", antialias: false, failIfMajorPerformanceCaveat: false }}>
+            <color attach="background" args={[isNight ? "#030615" : "#9bd5ff"]} />
+            <fog attach="fog" args={[isNight ? "#050817" : "#b8dfb5", 15, 48]} />
+            <Suspense fallback={null}>
+              <SceneLights isNight={isNight} />
+              <Environment preset={isNight ? "night" : "sunset"} resolution={32} />
+              {isNight && <GalaxySky />}
+              <Physics gravity={[0, -9.81, 0]}>
+                <Forest />
+                <Ground />
+                <Player refApi={playerApi} isNight={isNight} cameraMode={effectiveCameraMode} avatar={selectedAvatar} mouseSensitivity={mouseSensitivity} />
+                <PlayerPositionReporter playerApi={playerApi} onUpdate={setPlayerPosition} />
+                <AnomalyField
+                  solvedAnomalies={solvedAnomalies}
+                  activeAnomalyId={nextAnomaly?.id}
+                  onSelect={(anomaly) => {
+                    if (finale) return;
+                    setActiveClue(null);
+                    setActiveAnomaly(anomaly);
+                  }}
+                />
+              </Physics>
+              <FollowCamera playerApi={playerApi} finale={finale} cameraMode={effectiveCameraMode} cameraZoom={cameraZoom} mouseSensitivity={mouseSensitivity} />
+              <OrbitControls enabled={false} />
+            </Suspense>
+          </Canvas>
+        </CanvasErrorBoundary>
+      ) : (
+        <RendererFallback />
+      )}
 
       <Hud
         isNight={isNight}
@@ -409,6 +448,21 @@ function App() {
       )}
       {helpOpen && <HelpModal onClose={() => setHelpOpen(false)} />}
     </main>
+  );
+}
+
+function RendererFallback() {
+  return (
+    <div className="renderer-fallback">
+      <div className="renderer-fallback-card">
+        <span className="kicker">Renderer 3D tidak bisa dibuka</span>
+        <h2>Game gagal memuat canvas di laptop ini.</h2>
+        <p>
+          Coba buka pakai Chrome atau Edge terbaru, lalu aktifkan hardware acceleration di browser. Setelah itu tutup browser dan buka link game lagi.
+        </p>
+        <p className="fallback-link">Link yang benar tidak memakai /dist/ di belakang alamat.</p>
+      </div>
+    </div>
   );
 }
 
